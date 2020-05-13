@@ -1,0 +1,63 @@
+# Alejandro Adell Pina: 735061
+
+
+Parte I:
+
+Para comenzar, añadimos a la máquina virtual un nuevo disco de 33MB (almacenado en /dev/sdb) y usamos los
+siguientes comandos:
+
+sfdisk -s #Para comprobar si se habia añadido correctamente el nuevo disco.
+sudo apt-get update
+sudo apt-get install parted
+
+parted /dev/sdb
+mklabel gpt #Para gestionar las particiones de /dev/sdb, además creamos la tabla de
+				 #particiones GUID
+mkpart P1 ext3 1MB 16MB #Creamos la primera partición
+mkpart P2 ext4 16MB 33MB #Creamos la segunda partición
+Tuvimos problemas de alineamiento poniendo el inicio de la primera partición en 0.
+
+Creacion del sistema de ficheros:
+
+mkfs -t ext3 /dev/sdb1 #Para la primera partición.
+mkfs -t ext4 /dev/sdb2 #Para la segunda partición.
+
+Montaje de las particiones:
+
+(Previamente habiendo creado los directorios /mnt/sdb1 y /mnt/sdb2)
+mount -t ext3 /dev/sdb1 /mnt/sdb1
+mount -t ext4 /dev/sdb2 /mnt/sdb2
+
+Para que las nuevas particiones se monten con el arranque del sistema:
+
+blkid /dev/sdb1 #Para conocer la UUID de la primera partición.
+blkid /dev/sdb2 #Para conocer la UUID de la segunda partición.
+
+Modificamos el fichero /etc/fstab añadiendo al final:
+UUID poner el valor que haya dado el blkid
+
+UUID=8b577c58-7d5a-4340-956a-4606a417bcca /mnt/sdb1       ext3	  errors=remount-ro 0       1
+UUID=fb56c17a-e1eb-4e58-9de3-2752ea5be3bd /mnt/sdb2       ext4	  errors=remount-ro 0       1
+
+Al reiniciar el sistema comprobamos que las particiones están montadas.
+
+En esta última parte nos equivocamos escribiendo una de las UUID, por lo que al arrancar el sistema este
+se iniciaba en modo de emergencia, ya que no podía montar la particion con la UUID erronea. Tuvimos que
+modificar el fichero /etc/fstab desde este modo con el usuario root y ejecutar un reboot.
+
+Parte III:
+Instalamos: sudo apt-get install lvm2
+crea una nueva partición mediante los siguientes pasos:
+	-fdisk /dev/sdc
+		"n" para añadir la partición que será de tipo primario y ocupará toda la dimensión de la partición.
+		"t" para darle el formato "8e"
+		"w" para guardar la partición creada
+	-para la ejecución de los scripts, se crea en primer lugar un grupo volumen con: vgcreate vg_p5 /dev/sdc1		(/dev/sdc1 es el pv que se le pasa)
+	-Para el segundo script, los parametros que se le pasan, tiene que estar sin montar. Si /dev/db1 y /dev/db2 ya estan montados, se hace umount /mnt/db1, y se borran las lineas de /etc/fstab
+
+	- SUDO PVDISPLAY para ver los volumenes fisicos y su grupo volumen
+	- SUDO LVDISPLAY para ver los volumenes logicos
+
+
+Para comprobar el último script, lo invocamos y cuando nos pide los datos le introdujimos:
+vg_p5 vl_p5 10MB ext3 /mnt/sdc
